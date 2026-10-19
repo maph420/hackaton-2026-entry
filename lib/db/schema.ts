@@ -1,5 +1,6 @@
 import {
   boolean,
+  customType,
   integer,
   jsonb,
   pgTable,
@@ -35,6 +36,18 @@ export const materials = pgTable('materials', {
   externalKey: text('externalKey'),
   chunkCount: integer('chunkCount').notNull().default(0),
   pagesChecked: boolean('pagesChecked').notNull().default(false),
+  createdAt: timestamp('createdAt').notNull().defaultNow(),
+})
+
+const bytea = customType<{ data: Buffer; driverData: Buffer }>({ dataType: () => 'bytea' })
+
+/** Original uploaded file (PDF or image), kept so it can be viewed in the browser. */
+export const materialFiles = pgTable('material_files', {
+  materialId: text('materialId').primaryKey(),
+  userId: text('userId').notNull(),
+  mimeType: text('mimeType').notNull(),
+  fileName: text('fileName').notNull(),
+  data: bytea('data').notNull(),
   createdAt: timestamp('createdAt').notNull().defaultNow(),
 })
 

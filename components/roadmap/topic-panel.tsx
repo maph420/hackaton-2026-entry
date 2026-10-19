@@ -1,7 +1,8 @@
 'use client'
 
-import { Check } from 'lucide-react'
+import { BookOpen, Check } from 'lucide-react'
 import { ExerciseRow } from '@/components/exercise-row'
+import type { DocumentKind, ViewerDocument } from '@/components/roadmap/document-viewer'
 import { MathText } from '@/components/math-text'
 import { StatusControl } from '@/components/status-control'
 import { formatPages } from '@/lib/format-pages'
@@ -61,7 +62,11 @@ export function TopicPanel({
   onTopicStatus,
   onSubtopicStatus,
   onExerciseDone,
+  documents,
+  onOpenDocument,
 }: {
+  documents: Record<string, DocumentKind>
+  onOpenDocument: (document: ViewerDocument) => void
   topic: TopicData
   subtopics: SubtopicData[]
   exercises: ExerciseData[]
@@ -82,7 +87,11 @@ export function TopicPanel({
     <article aria-labelledby="topic-title" className="flex flex-col gap-5 rounded-xl border bg-card p-5">
       <header className="flex flex-col gap-3">
         <div>
-          <h2 id="topic-title" className="font-serif text-xl font-semibold text-balance">
+          <h2
+            id="topic-title"
+            tabIndex={-1}
+            className="font-serif text-xl font-semibold text-balance outline-none"
+          >
             <MathText text={topic.title} />
           </h2>
           {topic.summary && (
@@ -142,9 +151,30 @@ export function TopicPanel({
                         </p>
                         <p className="mt-1 text-muted-foreground">
                           {source.pages && source.pages.length > 0
-                            ? `Buscalo en ${formatPages(source.pages)}`
-                            : missingPagesNote(source.materialKind)}
+                            ? `Leé ${formatPages(source.pages)}`
+                            : documents[source.materialId]
+                              ? 'Sin numeración de páginas: abrilo y buscá el tema por su título.'
+                              : missingPagesNote(source.materialKind)}
                         </p>
+                        {documents[source.materialId] && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              onOpenDocument({
+                                materialId: source.materialId,
+                                title: source.materialTitle,
+                                kind: documents[source.materialId],
+                                pages: source.pages ?? null,
+                              })
+                            }
+                            className="mt-2 inline-flex items-center gap-1.5 rounded-md border bg-card px-2 py-1 font-medium transition-colors hover:border-primary/60"
+                          >
+                            <BookOpen className="size-3.5" aria-hidden="true" />
+                            {source.pages && source.pages.length > 0
+                              ? `Abrir en la página ${source.pages[0]}`
+                              : 'Ver documento'}
+                          </button>
+                        )}
                       </li>
                     ))}
                   </ul>

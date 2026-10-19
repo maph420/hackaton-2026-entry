@@ -21,16 +21,16 @@ export type NewMaterial = {
   replaceMaterialId?: string
 }
 
-/** Indexes a document with its page numbers. Returns false when there is not enough text. */
-export async function saveMaterial(input: NewMaterial): Promise<boolean> {
+/** Indexes a document with its page numbers. Returns its id, or null when there is not enough text. */
+export async function saveMaterial(input: NewMaterial): Promise<string | null> {
   const pieces: PageChunk[] = input.pages
     ? chunkPages(input.pages)
     : chunkText(input.text).map((content) => ({ content, page: null }))
-  if (pieces.length === 0) return false
+  if (pieces.length === 0) return null
 
   const embeddings = await embedTexts(pieces.map((piece) => piece.content))
 
-  await db.transaction(async (tx) => {
+  return db.transaction(async (tx) => {
     let materialId: string
 
     if (input.replaceMaterialId) {
@@ -73,6 +73,6 @@ export async function saveMaterial(input: NewMaterial): Promise<boolean> {
         })),
       )
     }
+    return materialId
   })
-  return true
 }

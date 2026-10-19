@@ -2,10 +2,20 @@ import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
 import { and, asc, eq } from 'drizzle-orm'
 import { ArrowLeft } from 'lucide-react'
+import type { DocumentKind } from '@/components/roadmap/document-viewer'
 import { RoadmapExplorer } from '@/components/roadmap/roadmap-explorer'
 import { db } from '@/lib/db'
-import { practiceExercises, subjects, subtopics, topics } from '@/lib/db/schema'
+import {
+  materialFiles,
+  materials,
+  practiceExercises,
+  subjects,
+  subtopics,
+  topics,
+} from '@/lib/db/schema'
 import { requireUser } from '@/lib/session'
+
+const FCEIA_FILE_KEY = /^fceia:(material|exam):\d+$/
 
 export default async function RoadmapPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -17,7 +27,7 @@ export default async function RoadmapPage({ params }: { params: Promise<{ id: st
     .where(and(eq(subjects.id, id), eq(subjects.userId, user.id)))
   if (!subject) notFound()
 
-  const [topicRows, subtopicRows, exerciseRows] = await Promise.all([
+  const [topicRows, subtopicRows, exerciseRows, materialRows] = await Promise.all([
     db
       .select({
         id: topics.id,
@@ -53,9 +63,27 @@ export default async function RoadmapPage({ params }: { params: Promise<{ id: st
       .from(practiceExercises)
       .where(and(eq(practiceExercises.subjectId, id), eq(practiceExercises.userId, user.id)))
       .orderBy(asc(practiceExercises.position)),
+    db
+      .select({
+        id: materials.id,
+        externalKey: materials.externalKey,
+        mimeType: materialFiles.mimeType,
+      })
+      .from(materials)
+      .leftJoin(materialFiles, eq(materialFiles.materialId, materials.id))
+      .where(and(eq(materials.subjectId, id), eq(materials.userId, user.id))),
   ])
 
   if (topicRows.length === 0) redirect(`/materias/${id}`)
+
+  const documents: Record<string, DocumentKind> = {}
+  for (const row of materialRows) {
+    if (row.mimeType) {
+      documents[row.id] = row.mimeType.startsWith('image/') ? 'image' : 'pdf'
+    } else if (row.externalKey && FCEIA_FILE_KEY.test(row.externalKey)) {
+      documents[row.id] = 'pdf'
+    }
+  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -75,6 +103,7 @@ export default async function RoadmapPage({ params }: { params: Promise<{ id: st
         initialTopics={topicRows}
         initialSubtopics={subtopicRows}
         initialExercises={exerciseRows}
+        documents={documents}
       />
     </div>
   )

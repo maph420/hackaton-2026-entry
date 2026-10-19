@@ -99,7 +99,7 @@ export function RoadmapGraph({
       </defs>
 
       {layout.lanes.map((lane) =>
-        lane.label ? (
+        lane.boxed ? (
           <g key={lane.y}>
             <rect
               x={6}
@@ -109,9 +109,11 @@ export function RoadmapGraph({
               rx={12}
               className="fill-muted/70 stroke-border"
             />
-            <text x={20} y={lane.y + 19} className="fill-muted-foreground text-[11px] font-medium">
-              {lane.label}
-            </text>
+            {lane.label && (
+              <text x={20} y={lane.y + 19} className="fill-muted-foreground text-[11px] font-medium">
+                {lane.label}
+              </text>
+            )}
           </g>
         ) : null,
       )}

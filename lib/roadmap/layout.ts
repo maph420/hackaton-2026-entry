@@ -18,7 +18,7 @@ export type LayoutInput = {
 
 export type LayoutNode = LayoutInput & { x: number; y: number }
 export type LayoutEdge = { id: string; from: string; to: string; d: string }
-export type LayoutLane = { y: number; height: number; label: string | null }
+export type LayoutLane = { y: number; height: number; label: string | null; boxed: boolean }
 export type RoadmapLayout = {
   nodes: LayoutNode[]
   edges: LayoutEdge[]
@@ -91,7 +91,7 @@ export function layoutRoadmap(input: LayoutInput[]): RoadmapLayout {
   let cursorY = PAD_Y
   let contentWidth = 0
 
-  connected.forEach((group, laneIndex) => {
+  connected.forEach((group) => {
     const layers: string[][] = []
     for (const id of [...group].sort((a, b) => (order.get(a) ?? 0) - (order.get(b) ?? 0))) {
       const layer = layerOf(id)
@@ -124,7 +124,7 @@ export function layoutRoadmap(input: LayoutInput[]): RoadmapLayout {
 
     const rows = Math.max(...layers.map((layer) => layer.length))
     const bodyHeight = rows * NODE_H + (rows - 1) * GAP_Y
-    const top = cursorY + (labelled ? LABEL_H : 0)
+    const top = cursorY
 
     layers.forEach((layer, layerIndex) => {
       const offset = ((rows - layer.length) * (NODE_H + GAP_Y)) / 2
@@ -136,8 +136,8 @@ export function layoutRoadmap(input: LayoutInput[]): RoadmapLayout {
       })
     })
 
-    const laneHeight = (labelled ? LABEL_H : 0) + bodyHeight + 24
-    lanes.push({ y: cursorY, height: laneHeight, label: labelled ? `Línea ${laneIndex + 1}` : null })
+    const laneHeight = bodyHeight + 24
+    lanes.push({ y: cursorY, height: laneHeight, label: null, boxed: labelled })
     contentWidth = Math.max(contentWidth, PAD_X * 2 + layers.length * NODE_W + (layers.length - 1) * GAP_X)
     cursorY += laneHeight + LANE_GAP
   })
@@ -157,6 +157,7 @@ export function layoutRoadmap(input: LayoutInput[]): RoadmapLayout {
       y: cursorY,
       height: laneHeight,
       label: labelled ? 'Temas independientes' : null,
+      boxed: labelled,
     })
     contentWidth = Math.max(contentWidth, PAD_X * 2 + columns * NODE_W + (columns - 1) * GAP_X)
     cursorY += laneHeight + LANE_GAP

@@ -1,5 +1,6 @@
 import 'server-only'
 import { extractText, getDocumentProxy } from 'unpdf'
+import { transcribeImage } from '@/lib/ai/ocr'
 
 export const MAX_FILE_BYTES = 8 * 1024 * 1024
 
@@ -45,7 +46,29 @@ export async function extractDocumentFromFile(file: File): Promise<ParsedDocumen
     return { text: normalize(await file.text()), pages: null }
   }
 
-  throw new Error('Formato no soportado todavía. Subí un PDF o un archivo de texto.')
+  const imageType = imageMimeType(file)
+  if (imageType) {
+    const text = await transcribeImage(new Uint8Array(await file.arrayBuffer()), imageType)
+    return { text: normalize(text), pages: null }
+  }
+
+  throw new Error('Formato no soportado todavía. Subí un PDF, una imagen o un archivo de texto.')
+}
+
+const IMAGE_TYPES: Record<string, string> = {
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.webp': 'image/webp',
+  '.gif': 'image/gif',
+}
+
+/** Returns the image media type of a supported upload, or null when it is not an image. */
+export function imageMimeType(file: File): string | null {
+  if (Object.values(IMAGE_TYPES).includes(file.type)) return file.type
+  const name = file.name.toLowerCase()
+  const extension = Object.keys(IMAGE_TYPES).find((ext) => name.endsWith(ext))
+  return extension ? IMAGE_TYPES[extension] : null
 }
 
 export async function extractTextFromFile(file: File): Promise<string> {

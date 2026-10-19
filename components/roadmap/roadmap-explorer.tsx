@@ -3,6 +3,11 @@
 import { useMemo, useRef, useState, useTransition } from 'react'
 import Link from 'next/link'
 import { ListChecks } from 'lucide-react'
+import {
+  DocumentViewer,
+  type DocumentKind,
+  type ViewerDocument,
+} from '@/components/roadmap/document-viewer'
 import { DownloadRoadmapButton } from '@/components/roadmap/download-roadmap-button'
 import { RoadmapGraph } from '@/components/roadmap/roadmap-graph'
 import { TopicPanel } from '@/components/roadmap/topic-panel'
@@ -66,7 +71,9 @@ export function RoadmapExplorer({
   initialTopics,
   initialSubtopics,
   initialExercises,
+  documents,
 }: {
+  documents: Record<string, DocumentKind>
   subjectId: string
   subjectName: string
   initialTopics: TopicData[]
@@ -78,6 +85,7 @@ export function RoadmapExplorer({
   const [exercises, setExercises] = useState(initialExercises)
   const [selectedId, setSelectedId] = useState(() => pickInitialTopic(initialTopics))
   const [error, setError] = useState<string | null>(null)
+  const [viewerDocument, setViewerDocument] = useState<ViewerDocument | null>(null)
   const [, startTransition] = useTransition()
 
   const svgRef = useRef<SVGSVGElement>(null)
@@ -128,9 +136,15 @@ export function RoadmapExplorer({
 
   const selectTopic = (topicId: string) => {
     setSelectedId(topicId)
-    if (window.matchMedia('(max-width: 1023px)').matches) {
-      panelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    }
+    requestAnimationFrame(() => {
+      const panel = panelRef.current
+      if (!panel) return
+      const { top } = panel.getBoundingClientRect()
+      if (top < 0 || top > window.innerHeight * 0.4) {
+        panel.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      }
+      panel.querySelector<HTMLElement>('#topic-title')?.focus({ preventScroll: true })
+    })
   }
 
   const changeTopicStatus = (topicId: string, status: ProgressStatus) => {
@@ -335,10 +349,13 @@ export function RoadmapExplorer({
               onTopicStatus={(status) => changeTopicStatus(selected.id, status)}
               onSubtopicStatus={changeSubtopicStatus}
               onExerciseDone={changeExerciseDone}
+              documents={documents}
+              onOpenDocument={setViewerDocument}
             />
           )}
         </div>
       </div>
+      <DocumentViewer document={viewerDocument} onClose={() => setViewerDocument(null)} />
     </div>
   )
 }

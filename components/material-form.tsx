@@ -29,13 +29,17 @@ export function MaterialForm({ subjectId }: { subjectId: string }) {
         </div>
       </div>
       <div className="flex flex-col gap-2">
-        <Label htmlFor="material-file">Archivo (PDF o texto)</Label>
+        <Label htmlFor="material-file">Archivo (PDF, imagen o texto)</Label>
         <Input
           id="material-file"
           name="file"
           type="file"
-          accept=".pdf,.txt,.md,.markdown,.csv,.tex,application/pdf,text/*"
+          accept=".pdf,.png,.jpg,.jpeg,.webp,.gif,.txt,.md,.markdown,.csv,.tex,application/pdf,image/png,image/jpeg,image/webp,image/gif,text/*"
+          aria-describedby="material-file-hint"
         />
+        <p id="material-file-hint" className="text-xs text-muted-foreground">
+          {'Las fotos de apuntes o del pizarrón se transcriben automáticamente. Máximo 8 MB.'}
+        </p>
       </div>
       <div className="flex flex-col gap-2">
         <Label htmlFor="material-text">O pegá el contenido</Label>

@@ -5,11 +5,18 @@ import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { UserError, toUserMessage } from '@/lib/errors'
 import { db } from '@/lib/db'
-import { chunks, materials, subjects } from '@/lib/db/schema'
+import { chunks, materialFiles, materials, subjects } from '@/lib/db/schema'
 import { saveMaterial } from '@/lib/ai/ingest'
-import { extractDocumentFromFile } from '@/lib/ai/text'
+import { extractDocumentFromFile, imageMimeType } from '@/lib/ai/text'
 import { getUserId } from '@/lib/session'
 import { isMaterialKind } from '@/lib/types'
+
+function viewableMimeType(file: File) {
+  if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
+    return 'application/pdf'
+  }
+  return imageMimeType(file)
+}
 
 export async function addMaterial(formData: FormData) {
   const userId = await getUserId()
@@ -34,7 +41,7 @@ export async function addMaterial(formData: FormData) {
       : { text: pastedText, pages: null }
     if (!document.text) {
       throw new UserError(
-        'No pude extraer texto. Pegá el contenido o subí un PDF con texto seleccionable.',
+        'No pude extraer texto. Pegá el contenido o subí un PDF con texto seleccionable o una imagen legible.',
       )
     }
 
@@ -42,7 +49,7 @@ export async function addMaterial(formData: FormData) {
       String(formData.get('title') ?? '').trim() ||
       (hasFile ? file.name.replace(/\.[^.]+$/, '') : 'Sin título')
 
-    const saved = await saveMaterial({
+    const materialId = await saveMaterial({
       userId,
       subjectId,
       title,
@@ -51,7 +58,18 @@ export async function addMaterial(formData: FormData) {
       pages: document.pages,
       sourceName: hasFile ? file.name : null,
     })
-    if (!saved) throw new UserError('El material es demasiado corto para indexarlo.')
+    if (!materialId) throw new UserError('El material es demasiado corto para indexarlo.')
+
+    const mimeType = hasFile ? viewableMimeType(file) : null
+    if (hasFile && mimeType) {
+      await db.insert(materialFiles).values({
+        materialId,
+        userId,
+        mimeType,
+        fileName: file.name,
+        data: Buffer.from(await file.arrayBuffer()),
+      })
+    }
   } catch (error) {
     errorMessage = toUserMessage(error, 'No pude indexar el material. Intentá de nuevo.')
   }
@@ -72,6 +90,9 @@ export async function deleteMaterial(formData: FormData) {
     await tx
       .delete(chunks)
       .where(and(eq(chunks.materialId, materialId), eq(chunks.userId, userId)))
+    await tx
+      .delete(materialFiles)
+      .where(and(eq(materialFiles.materialId, materialId), eq(materialFiles.userId, userId)))
     await tx
       .delete(materials)
       .where(and(eq(materials.id, materialId), eq(materials.userId, userId)))
